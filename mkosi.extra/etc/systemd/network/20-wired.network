@@ -1,0 +1,19 @@
+[Match]
+Name=en* eth*
+
+[Network]
+DHCP=yes
+DNS=1.1.1.1#cloudflare-dns.com
+DNS=8.8.8.8#dns.google
+DNSOverTLS=yes
+IPv6AcceptRA=yes
+LinkLocalAddressing=yes
+
+[DHCPv4]
+UseDNS=no
+
+[DHCPv6]
+UseDNS=no
+
+[IPv6AcceptRA]
+UseDNS=no

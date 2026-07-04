@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+install -d -m 1777 .tmp
+export TMPDIR="$PWD/.tmp"
+
+if [[ ! -x mkosi/bin/mkosi ]]; then
+    printf 'mkosi submodule is not initialized; run: git submodule update --init --recursive\n' >&2
+    exit 1
+fi
+
+exec mkosi/bin/mkosi "$@"

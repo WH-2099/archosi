@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+aur_list="$SRCDIR/mkosi.aur-packages"
+build_user=_aurbuild
+tmp_root="$SRCDIR/.tmp"
+build_root="$tmp_root/aur-build"
+build_home="$build_root/home"
+sudoers=/etc/sudoers.d/90-aur-build
+
+mapfile -t aur_packages < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$aur_list")
+
+if ((${#aur_packages[@]} == 0)); then
+    exit 0
+fi
+
+cleanup() {
+    rm -f "$sudoers"
+    userdel -r "$build_user" 2>/dev/null || true
+    rm -rf "$build_root" /var/cache/paru /root/.cache/paru
+    rmdir "$tmp_root" 2>/dev/null || true
+}
+
+trap cleanup EXIT
+
+install -d -m 0750 /etc/sudoers.d
+install -d -m 1777 "$tmp_root" "$build_root"
+useradd --system --user-group --no-create-home --home-dir "$build_home" --shell /usr/bin/bash "$build_user"
+build_uid=$(id -u "$build_user")
+build_gid=$(id -g "$build_user")
+userenv=(
+    "HOME=$build_home"
+    "HTTP_PROXY=${HTTP_PROXY-}"
+    "HTTPS_PROXY=${HTTPS_PROXY-}"
+    "ALL_PROXY=${ALL_PROXY-}"
+    "http_proxy=${http_proxy-}"
+    "https_proxy=${https_proxy-}"
+    "all_proxy=${all_proxy-}"
+    "NO_PROXY=${NO_PROXY-}"
+    "no_proxy=${no_proxy-}"
+    "TMPDIR=$tmp_root"
+)
+as_build_user=(setpriv --reuid "$build_uid" --regid "$build_gid" --clear-groups env -u BUILDDIR "${userenv[@]}")
+"${as_build_user[@]}" install -d -m 0750 "$build_home"
+printf 'Defaults:%s env_keep += "HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy NO_PROXY no_proxy"\n' "$build_user" >"$sudoers"
+printf '%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$build_user" >>"$sudoers"
+chmod 0440 "$sudoers"
+
+for package in "${aur_packages[@]}"; do
+    package_dir="$build_home/$package"
+    "${as_build_user[@]}" git clone "https://aur.archlinux.org/$package.git" "$package_dir"
+    "${as_build_user[@]}" "PKGDEST=$package_dir" bash -lc \
+        'cd "$1" && makepkg --syncdeps --noconfirm --needed' bash "$package_dir"
+
+    mapfile -t built_packages < <(
+        fd --absolute-path --no-ignore --max-depth 1 --type file --exclude '*-debug-*.pkg.tar.*' \
+            '\.pkg\.tar\.' "$package_dir"
+    )
+
+    if ((${#built_packages[@]} == 0)); then
+        printf 'No package artifacts produced for %s\n' "$package" >&2
+        exit 1
+    fi
+
+    pacman --noconfirm --needed -U "${built_packages[@]}"
+done
+
+pacman -Scc --noconfirm || true

@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+
+build() {
+    local target
+    for target in emergency rescue; do
+        local dir="${BUILDROOT}/etc/systemd/system/${target}.service.d"
+        mkdir -p "$dir"
+        cat <<_EOF > "${dir}/90-initrd-reboot.conf"
+[Service]
+ExecStart=
+ExecStart=/usr/bin/systemctl reboot
+_EOF
+    done
+}
+
+help() {
+    cat <<_EOF
+Disables emergency and rescue shells inside the initramfs by overriding them to reboot.
+_EOF
+}

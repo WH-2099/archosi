@@ -1,0 +1,10 @@
+/.tmp/
+/mkosi.cache/
+/mkosi.builddir/
+/mkosi.pkgcache/
+/mkosi.tools/
+/mkosi.tools.build.cache/
+/mkosi.tools.manifest
+/mkosi.output/
+
+/mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.*
