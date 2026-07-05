@@ -1,13 +1,16 @@
 [Match]
 Name=en* eth*
 
+[Link]
+RequiredForOnline=no
+
 [Network]
 DHCP=yes
+# DNS=1.12.12.12#dot.pub
+# DNS=120.53.53.53#dot.pub
 DNS=1.1.1.1#cloudflare-dns.com
 DNS=8.8.8.8#dns.google
 DNSOverTLS=yes
-IPv6AcceptRA=yes
-LinkLocalAddressing=yes
 
 [DHCPv4]
 UseDNS=no
