@@ -2,135 +2,68 @@
 
 `archosi` is a `mkosi` configuration for building an Arch Linux x86-64 system image.
 
-The `mkosi/` directory is the upstream `systemd/mkosi` submodule.
-
-Use `./mkosi-local` from the repository root to call `mkosi/bin/mkosi` from that submodule.
-
-`mkosi-local` creates `.tmp/` in the repository root and exports it as `TMPDIR`.
+| Path | Role |
+| --- | --- |
+| `mkosi/` | Upstream `systemd/mkosi` submodule. |
+| `./mkosi-local` | Calls `mkosi/bin/mkosi` from the repository root. |
+| `.tmp/` | Created by `mkosi-local` and exported as `TMPDIR`. |
 
 ## Configuration
 
-The default image is an Arch Linux rolling x86-64 GPT disk image.
-
-Build outputs are written to `mkosi.output/`.
-
-The default image file is `mkosi.output/image.raw.zst`.
-
-The boot path uses UEFI, systemd-boot, and UKI.
-
-The default profile does not enable Secure Boot, LUKS, verity, or expected PCR signing.
-
-The root filesystem uses Btrfs with `@` as the default subvolume and `noatime,compress=zstd` as mount options.
-
-The ESP is a 1G vfat partition mounted at `/efi`.
-
-The default root password is `root`.
-
-The root shell is `/usr/bin/fish`.
-
-The system locale is `en_US.UTF-8`.
-
-The timezone is `UTC`.
-
-`mkosi.conf.d/10-packages.conf` defines the official package list.
-
-`mkosi.aur-packages` defines the AUR package list.
-
-`mkosi.postinst.d/50-aur.sh.chroot` builds and installs AUR packages inside the image.
-
-`mkosi.extra/etc/repart.d/10-root.conf` keeps a runtime root partition definition for manual `systemd-repart`.
-
-`mkosi.profiles/encrypt` is the encryption profile.
-
-The encryption profile enables Secure Boot and LUKS root.
-
-The encryption profile root partition uses `Encrypt=key-file`.
-
-The encryption profile mkinitcpio hooks also enable `sd-encrypt`.
+| Area | Value |
+| --- | --- |
+| Image | Arch Linux rolling x86-64 GPT disk image. |
+| Output directory | `mkosi.output/` |
+| Default image | `mkosi.output/image.raw.zst` |
+| Boot path | UEFI, systemd-boot, UKI. |
+| Default security | No Secure Boot, LUKS, verity, or expected PCR signing. |
+| Root filesystem | Btrfs subvolume `@` with `noatime,compress=zstd`. |
+| ESP | 1G vfat mounted at `/efi`. |
+| Root password | `root` |
+| Root shell | `/usr/bin/fish` |
+| Locale | `en_US.UTF-8` |
+| Timezone | `UTC` |
+| Official packages | `mkosi.conf.d/10-packages.conf` |
+| AUR packages | `mkosi.aur-packages` |
+| AUR install script | `mkosi.postinst.d/50-aur.sh.chroot` |
+| Runtime root repart config | `mkosi.extra/etc/repart.d/10-root.conf` |
+| Encryption profile | `mkosi.profiles/encrypt` |
+| Encryption profile security | Secure Boot and LUKS root. |
+| Encryption profile root | `Encrypt=key-file` |
+| Encryption profile initramfs | mkinitcpio hooks include `sd-encrypt`. |
 
 ## Development
 
-Install the base tools.
-
-```console
-sudo pacman -S --needed git bash python openssl qemu-base edk2-ovmf
-```
-
-Initialize the submodule.
-
-```console
-git submodule update --init --recursive
-```
-
-Verify that the submodule is ready.
-
-```console
-git submodule status
-test -x mkosi/bin/mkosi
-```
-
-This repository uses `prek.toml` for pre-commit hooks.
-
-Install the pre-commit hook.
-
-```console
-prek install
-```
-
-Run all hooks manually.
-
-```console
-prek run --all-files
-```
-
-If `prek` is not installed yet, install the AUR package on Arch Linux.
-
-```console
-paru -S --needed prek-bin
-```
+| Phase | Action | Command |
+| --- | --- | --- |
+| Tools | Install base tools | `sudo pacman -S --needed git bash python openssl qemu-base edk2-ovmf` |
+| Source | Initialize submodule | `git submodule update --init --recursive` |
+| Source | Verify submodule | `git submodule status`<br>`test -x mkosi/bin/mkosi` |
+| Hooks | Config file | `prek.toml` |
+| Hooks | Install hook | `prek install` |
+| Hooks | Run all hooks | `prek run --all-files` |
+| Hooks | Install `prek` on Arch Linux | `paru -S --needed prek-bin` |
 
 ## Build The Default Image
 
-Show the final configuration summary.
-
-```console
-./mkosi-local summary
-```
-
-Show the merged configuration.
-
-```console
-./mkosi-local cat-config
-```
-
-Build the default image.
-
-```console
-./mkosi-local build
-```
-
-Check the output after the build finishes.
-
-```console
-ls -lh mkosi.output/image.raw.zst
-```
+| Stage | Command | Output |
+| --- | --- | --- |
+| Inspect | `./mkosi-local summary` | Final configuration summary. |
+| Inspect | `./mkosi-local cat-config` | Merged configuration. |
+| Build | `./mkosi-local build` | Default image build. |
+| Verify | `ls -lh mkosi.output/image.raw.zst` | Compressed raw image. |
 
 ## Build The Encrypted Image
 
-The encryption profile needs a local Secure Boot signing key and certificate.
+| Item | Value |
+| --- | --- |
+| Profile | `mkosi.profiles/encrypt` |
+| Secure Boot key | `mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.key` |
+| Secure Boot certificate | `mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.crt` |
+| Git status | Listed in `.gitignore`; do not commit. |
+| LUKS passphrase file | `mkosi.profiles/encrypt/mkosi.passphrase` |
 
-These paths are listed in `.gitignore`.
-
-Do not commit these files to the repository.
-
-Put the files at the following paths.
-
-```text
-mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.key
-mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.crt
-```
-
-For local testing, generate a self-signed key and certificate.
+Generate a self-signed key and certificate for local testing.
 
 ```console
 install -d -m 0755 mkosi.profiles/encrypt/mkosi.extra/etc/kernel
@@ -138,7 +71,7 @@ openssl req -newkey rsa:4096 -nodes -keyout mkosi.profiles/encrypt/mkosi.extra/e
 chmod 600 mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.key
 ```
 
-If you already have your own key and certificate, copy them to the same paths.
+Or copy an existing key and certificate.
 
 ```console
 install -m 0600 secure-boot.key mkosi.profiles/encrypt/mkosi.extra/etc/kernel/secure-boot.key
@@ -151,64 +84,35 @@ Tighten the LUKS passphrase file permissions.
 chmod 600 mkosi.profiles/encrypt/mkosi.passphrase
 ```
 
-Show the final encryption profile summary.
-
-```console
-./mkosi-local --profile encrypt summary
-```
-
-Build the encrypted image.
-
-```console
-./mkosi-local --profile encrypt build
-```
+| Stage | Command | Output |
+| --- | --- | --- |
+| Inspect | `./mkosi-local --profile encrypt summary` | Final encryption profile summary. |
+| Build | `./mkosi-local --profile encrypt build` | Encrypted image build. |
 
 ## Rotate Installed Secrets
 
-The current image intentionally uses deterministic plaintext secrets during the build.
+| Context | Value |
+| --- | --- |
+| Build-time state | Deterministic plaintext secrets. |
+| Rotation point | After booting the installed system. |
 
-Rotate them after booting the installed system.
-
-Change the root password.
-
-```console
-passwd
-```
-
-Add a new LUKS passphrase for the root partition.
-
-```console
-cryptsetup luksAddKey /dev/disk/by-partlabel/ROOT
-```
-
-Verify that the new LUKS passphrase works.
-
-```console
-cryptsetup open --test-passphrase /dev/disk/by-partlabel/ROOT
-```
-
-Remove the old deterministic LUKS passphrase.
-
-```console
-cryptsetup luksRemoveKey /dev/disk/by-partlabel/ROOT
-```
+| Order | Action | Command |
+| --- | --- | --- |
+| 1 | Change root password | `passwd` |
+| 2 | Add new LUKS passphrase | `cryptsetup luksAddKey /dev/disk/by-partlabel/ROOT` |
+| 3 | Verify new LUKS passphrase | `cryptsetup open --test-passphrase /dev/disk/by-partlabel/ROOT` |
+| 4 | Remove deterministic LUKS passphrase | `cryptsetup luksRemoveKey /dev/disk/by-partlabel/ROOT` |
 
 ## Bind TPM2 To PCR 7
 
-Do this after Secure Boot is in its final enrolled state and the deterministic LUKS passphrase has been removed.
+| Guardrail | Value |
+| --- | --- |
+| Timing | After Secure Boot is final and the deterministic LUKS passphrase is removed. |
+| Recovery | Keep at least one manual LUKS passphrase. |
 
-Keep at least one manual LUKS passphrase as the recovery path.
-
-Enroll a TPM2 token sealed to PCR 7 for the root partition.
-
-```console
-systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/disk/by-partlabel/ROOT
-```
-
-Reboot once and confirm the root partition unlocks through TPM2.
-
-```console
-systemctl reboot
-```
+| Order | Action | Command |
+| --- | --- | --- |
+| 1 | Enroll TPM2 token | `systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/disk/by-partlabel/ROOT` |
+| 2 | Reboot and confirm TPM2 unlock | `systemctl reboot` |
 
 Except for the Secure Boot signing key and certificate, the current build configuration is complete.
