@@ -163,4 +163,34 @@ Build the encrypted image.
 ./mkosi-local --profile encrypt build
 ```
 
+## Rotate Installed Secrets
+
+The current image intentionally uses deterministic plaintext secrets during the build.
+
+Rotate them after booting the installed system.
+
+Change the root password.
+
+```console
+passwd
+```
+
+Add a new LUKS passphrase for the root partition.
+
+```console
+cryptsetup luksAddKey /dev/disk/by-partlabel/ROOT
+```
+
+Verify that the new LUKS passphrase works.
+
+```console
+cryptsetup open --test-passphrase /dev/disk/by-partlabel/ROOT
+```
+
+Remove the old deterministic LUKS passphrase.
+
+```console
+cryptsetup luksRemoveKey /dev/disk/by-partlabel/ROOT
+```
+
 Except for the Secure Boot signing key and certificate, the current build configuration is complete.
