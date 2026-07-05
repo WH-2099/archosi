@@ -193,4 +193,22 @@ Remove the old deterministic LUKS passphrase.
 cryptsetup luksRemoveKey /dev/disk/by-partlabel/ROOT
 ```
 
+## Bind TPM2 To PCR 7
+
+Do this after Secure Boot is in its final enrolled state and the deterministic LUKS passphrase has been removed.
+
+Keep at least one manual LUKS passphrase as the recovery path.
+
+Enroll a TPM2 token sealed to PCR 7 for the root partition.
+
+```console
+systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/disk/by-partlabel/ROOT
+```
+
+Reboot once and confirm the root partition unlocks through TPM2.
+
+```console
+systemctl reboot
+```
+
 Except for the Secure Boot signing key and certificate, the current build configuration is complete.
