@@ -422,10 +422,19 @@ printf '%s\n' $hypr_programs_body >$hypr_programs_config
 
 set -l hypr_settings_body \
     'hl.monitor({' \
-    '    output   = "",' \
-    '    mode     = "preferred",' \
+    '    output   = "eDP-1",' \
+    '    mode     = "3072x1920@120",' \
     '    position = "auto",' \
-    '    scale    = "auto",' \
+    '    scale    = 2,' \
+    '    vrr      = 2,' \
+    '})' \
+    '' \
+    'hl.monitor({' \
+    '    output   = "DP-1",' \
+    '    mode     = "3840x2160@160",' \
+    '    position = "auto",' \
+    '    scale    = 1.5,' \
+    '    vrr      = 2,' \
     '})' \
     '' \
     'local home = os.getenv("HOME") or "/home/wh2099"' \
@@ -439,6 +448,19 @@ set -l hypr_settings_body \
     'hl.env("XCURSOR_SIZE", "24")' \
     'hl.env("HYPRCURSOR_SIZE", "24")' \
     'hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")' \
+    '' \
+    'hl.device({' \
+    '    name               = "tpps/2-synaptics-trackpoint",' \
+    '    natural_scroll     = true,' \
+    '    scroll_method      = "on_button_down",' \
+    '    scroll_button      = 274,' \
+    '    scroll_button_lock = true,' \
+    '})' \
+    '' \
+    'hl.device({' \
+    '    name           = "elan0676:00-04f3:3195-touchpad",' \
+    '    natural_scroll = true,' \
+    '})' \
     '' \
     'hl.config({' \
     '    general = {' \
@@ -458,6 +480,10 @@ set -l hypr_settings_body \
     '        blur = {' \
     '            size = 3,' \
     '        },' \
+    '    },' \
+    '' \
+    '    xwayland = {' \
+    '        force_zero_scaling = true,' \
     '    },' \
     '})' \
     '' \
@@ -486,24 +512,6 @@ set -l hypr_settings_body \
     'hl.animation({ leaf = "workspacesOut", enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })' \
     'hl.animation({ leaf = "zoomFactor",    enabled = true, speed = 7,    bezier = "quick" })' \
     '' \
-    'hl.config({' \
-    '    dwindle = {' \
-    '        preserve_split = true,' \
-    '    },' \
-    '})' \
-    '' \
-    'hl.config({' \
-    '    master = {' \
-    '        new_status = "master",' \
-    '    },' \
-    '})' \
-    '' \
-    'hl.gesture({' \
-    '    fingers   = 3,' \
-    '    direction = "horizontal",' \
-    '    action    = "workspace",' \
-    '})' \
-    '' \
     'hl.gesture({' \
     '    fingers        = 3,' \
     '    direction      = "vertical",' \
@@ -514,6 +522,7 @@ set -l hypr_settings_body \
     'hl.gesture({' \
     '    fingers   = 3,' \
     '    direction = "pinch",' \
+    '    mods      = "SUPER",' \
     '    action    = "cursor_zoom",' \
     '    mode      = "live",' \
     '})' \
@@ -532,21 +541,126 @@ set -l hypr_settings_body \
     '})' \
     '' \
     'hl.gesture({' \
-    '    fingers   = 4,' \
+    '    fingers   = 2,' \
     '    direction = "pinch",' \
     '    action    = "fullscreen",' \
+    '})' \
+    '' \
+    'hl.gesture({' \
+    '    fingers   = 4,' \
+    '    direction = "pinch",' \
+    '    action    = "close",' \
     '})'
 printf '%s\n' $hypr_settings_body >$hypr_settings_config
 
 set -l hypr_binds_body \
+    'local function configureDwindle(mainMod)' \
+    '    hl.config({' \
+    '        general = {' \
+    '            layout = "dwindle",' \
+    '        },' \
+    '' \
+    '        dwindle = {' \
+    '            preserve_split = true,' \
+    '        },' \
+    '    })' \
+    '' \
+    '    hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())' \
+    '    hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))' \
+    '' \
+    '    hl.gesture({' \
+    '        fingers   = 3,' \
+    '        direction = "horizontal",' \
+    '        action    = "workspace",' \
+    '    })' \
+    'end' \
+    '' \
+    'local function configureScrolling(mainMod)' \
+    '    hl.config({' \
+    '        general = {' \
+    '            layout = "scrolling",' \
+    '        },' \
+    '    })' \
+    '' \
+    '    hl.bind(mainMod .. " + bracketleft",  hl.dsp.layout("colresize -conf"))' \
+    '    hl.bind(mainMod .. " + bracketright", hl.dsp.layout("colresize +conf"))' \
+    '    hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.layout("consume_or_expel prev"))' \
+    '    hl.bind(mainMod .. " + SHIFT + right", hl.dsp.layout("consume_or_expel next"))' \
+    '' \
+    '    hl.gesture({' \
+    '        fingers   = 3,' \
+    '        direction = "pinchin",' \
+    '        action    = function() hl.dispatch(hl.dsp.layout("colresize +conf")) end,' \
+    '    })' \
+    '' \
+    '    hl.gesture({' \
+    '        fingers   = 3,' \
+    '        direction = "pinchout",' \
+    '        action    = function() hl.dispatch(hl.dsp.layout("colresize -conf")) end,' \
+    '    })' \
+    '' \
+    '    hl.gesture({' \
+    '        fingers   = 3,' \
+    '        direction = "horizontal",' \
+    '        action    = "scroll_move",' \
+    '    })' \
+    '' \
+    '    hl.gesture({' \
+    '        fingers   = 3,' \
+    '        direction = "horizontal",' \
+    '        mods      = "SUPER",' \
+    '        action    = "workspace",' \
+    '    })' \
+    'end' \
+    '' \
     'return function(programs)' \
     '    local mainMod     = programs.main_mod' \
     '    local terminal    = programs.terminal' \
     '    local fileManager = programs.file_manager' \
     '    local menu        = programs.menu' \
+    '    local assistantKey       = mainMod .. " + SHIFT + code:201"' \
+    '    local assistantChordUsed = false' \
+    '    local protonWindowPending = false' \
+    '' \
+    '    configureScrolling(mainMod)' \
+    '' \
+    '    hl.on("window.open", function(window)' \
+    '        if not protonWindowPending or window.initial_class ~= "firefox" then return end' \
+    '        protonWindowPending = false' \
+    '        hl.dispatch(hl.dsp.window.move({' \
+    '            window = window,' \
+    '            workspace = "special:magic",' \
+    '            follow = true,' \
+    '        }))' \
+    '    end)' \
+    '' \
+    '    local function bindAssistantChord(key, command, repeating)' \
+    '        hl.bind(assistantKey .. " + " .. key, function()' \
+    '            assistantChordUsed = true' \
+    '            hl.exec_cmd(command)' \
+    '        end, { repeating = repeating })' \
+    '    end' \
     '' \
     '    hl.bind(mainMod .. " + Q", hl.dsp.exec_cmd(terminal))' \
     '    hl.bind(mainMod .. " + C", hl.dsp.window.close())' \
+    '    hl.bind(assistantKey, function()' \
+    '        if not assistantChordUsed then' \
+    '            local process = io.popen("pgrep -x open-orpheus")' \
+    '            local running = process:read(1) ~= nil' \
+    '            process:close()' \
+    '' \
+    '            if running then' \
+    '                hl.exec_cmd("playerctl play-pause")' \
+    '            else' \
+    '                hl.exec_cmd("open-orpheus", { workspace = "special:magic" })' \
+    '            end' \
+    '        end' \
+    '        assistantChordUsed = false' \
+    '    end, { release = true })' \
+    '    bindAssistantChord("up",    "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+", true)' \
+    '    bindAssistantChord("down",  "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-", true)' \
+    '    bindAssistantChord("left",  "playerctl previous")' \
+    '    bindAssistantChord("right", "playerctl next")' \
     '    hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("loginctl lock-session"))' \
     '    hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("hyprshutdown"))' \
     '    hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))' \
@@ -554,8 +668,6 @@ set -l hypr_binds_body \
     '    hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))' \
     '    hl.bind("ALT + space", hl.dsp.exec_cmd(menu))' \
     '    hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))' \
-    '    hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())' \
-    '    hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))' \
     '' \
     '    hl.bind("Print",                             hl.dsp.exec_cmd("hyprshot -m output --raw | satty --filename -"))' \
     '    hl.bind("XF86SelectiveScreenshot",           hl.dsp.exec_cmd("hyprshot -m region --raw | satty --filename -"))' \
@@ -582,6 +694,9 @@ set -l hypr_binds_body \
     '' \
     '    hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })' \
     '    hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })' \
+    '    hl.bind("mouse:274", hl.dsp.send_shortcut({ mods = "", key = "mouse:275" }), {' \
+    '        device = { list = { "elan0676:00-04f3:3195-touchpad" } },' \
+    '    })' \
     '' \
     '    hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })' \
     '    hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })' \
@@ -589,6 +704,17 @@ set -l hypr_binds_body \
     '    hl.bind("XF86AudioMicMute",     hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true })' \
     '    hl.bind("XF86MonBrightnessUp",  hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"),                  { locked = true, repeating = true })' \
     '    hl.bind("XF86MonBrightnessDown",hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"),                  { locked = true, repeating = true })' \
+    '' \
+    '    hl.bind("XF86LinkPhone", hl.dsp.exec_cmd("systemctl suspend"))' \
+    '    hl.bind("XF86Favorites", function()' \
+    '        protonWindowPending = true' \
+    '        hl.exec_cmd("firefox --new-window https://mail.proton.me")' \
+    '    end)' \
+    '    hl.bind("XF86Display", function()' \
+    '        local internal = hl.get_monitor("eDP-1")' \
+    '        if internal and #hl.get_monitors() == 1 then return end' \
+    '        hl.monitor({ output = "eDP-1", disabled = internal ~= nil })' \
+    '    end)' \
     '' \
     '    hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })' \
     '    hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })' \
