@@ -23,6 +23,8 @@ set -l packages \
     hyprlock \
     fprintd \
     playerctl \
+    fzf \
+    pacman-contrib \
     firefox \
     ghostty \
     dolphin \
@@ -57,6 +59,7 @@ set -l packages \
     noto-fonts \
     noto-fonts-cjk \
     noto-fonts-emoji \
+    otf-commit-mono-nerd \
     ttf-cascadia-code \
     grim \
     slurp \
@@ -73,11 +76,128 @@ set -l packages \
 
 paru -S --needed $packages
 
+set -l waybar_config ~/.config/waybar
+set -l mechabar_revision 21db00f48043232b52bd5dbb6ac8ca20603b696a
+
+if not test -d $waybar_config/.git
+    if test -e $waybar_config
+        echo "Refusing to replace non-git Waybar config: $waybar_config" >&2
+        exit 1
+    end
+
+    git clone https://github.com/sejjy/mechabar.git $waybar_config
+    or exit 1
+    git -C $waybar_config checkout $mechabar_revision
+    or exit 1
+end
+
+set -l waybar_fcitx_body \
+    '{' \
+    '    "custom/fcitx": {' \
+    '        "exec": "case $(fcitx5-remote) in 2) echo cn;; *) echo en;; esac",' \
+    '        "interval": 1' \
+    '    }' \
+    '}'
+printf '%s\n' $waybar_fcitx_body >$waybar_config/modules/custom/fcitx.jsonc
+
+set -l waybar_backlight_body \
+    '{' \
+    '    "custom/backlight": {' \
+    '        "exec": "brightnessctl -e4 -m | cut -d, -f4",' \
+    '        "interval": 2,' \
+    '        "signal": 2,' \
+    '        "format": " {text}",' \
+    '        "max-length": 7,' \
+    '        "min-length": 7,' \
+    '        "on-scroll-up": "brightnessctl -q -e4 -n2 set 5%+ && pkill -RTMIN+2 waybar",' \
+    '        "on-scroll-down": "brightnessctl -q -e4 -n2 set 5%- && pkill -RTMIN+2 waybar",' \
+    '        "tooltip-format": "Screen Brightness"' \
+    '    }' \
+    '}'
+printf '%s\n' $waybar_backlight_body >$waybar_config/modules/backlight.jsonc
+
+set -l waybar_power_profiles_body \
+    '{' \
+    '    "power-profiles-daemon": {' \
+    '        "format": "{icon}",' \
+    '        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",' \
+    '        "format-icons": {' \
+    '            "default": "",' \
+    '            "performance": "",' \
+    '            "balanced": "",' \
+    '            "power-saver": ""' \
+    '        }' \
+    '    }' \
+    '}'
+printf '%s\n' $waybar_power_profiles_body >$waybar_config/modules/power-profiles-daemon.jsonc
+
+set -l waybar_inhibitor_body \
+    '{' \
+    '    "inhibitor": {' \
+    '        "what": ["idle", "handle-lid-switch"],' \
+    '        "format": "{icon}",' \
+    '        "format-icons": {' \
+    '            "activated": "󰒳",' \
+    '            "deactivated": "󰒲"' \
+    '        },' \
+    '        "max-length": 3,' \
+    '        "min-length": 3' \
+    '    }' \
+    '}'
+printf '%s\n' $waybar_inhibitor_body >$waybar_config/modules/inhibitor.jsonc
+
+rm -f $waybar_config/modules/hyprland/language.jsonc
+rm -f $waybar_config/modules/idle_inhibitor.jsonc
+sd '"hyprland/language"' '"custom/fcitx"' $waybar_config/config.jsonc
+sd '"idle_inhibitor"' '"inhibitor"' $waybar_config/config.jsonc
+sd '"backlight",' '"custom/backlight",' $waybar_config/config.jsonc
+sd '"custom/left_div#8",\n\t\t"battery",' '"custom/left_div#8",\n\t\t"power-profiles-daemon",\n\t\t"battery",' $waybar_config/config.jsonc
+sd '#language' '#custom-fcitx' $waybar_config/styles/modules-center.css
+sd '#idle_inhibitor' '#inhibitor' \
+    $waybar_config/styles/modules-center.css \
+    $waybar_config/styles/states.css
+sd 'Idle inhibitor' 'Inhibitor' $waybar_config/styles/modules-center.css
+sd '#backlight' '#custom-backlight' $waybar_config/styles/modules-right.css
+sd '#custom-left_div\.8 \{\n\tbackground-color: @backlight;\n\tcolor: @battery;\n\}\n#battery \{' '#custom-left_div.8 {\n\tbackground-color: @backlight;\n\tcolor: @battery;\n}\n#power-profiles-daemon {\n\tpadding: 0 8px;\n\tbackground-color: @battery;\n}\n#battery {' $waybar_config/styles/modules-right.css
+sd 'border-radius: (10|16)px;' 'border-radius: 0;' \
+    $waybar_config/style.css \
+    $waybar_config/styles/modules-right.css
+sd '"tooltip-format": "No command set"' '"on-click": "hyprlauncher",\n\t\t"tooltip-format": "Application launcher"' $waybar_config/modules/custom/user.jsonc
+sd '"on-click": "kitty -e ~/.config/waybar/scripts/network"' '"on-click": "iwgtk"' $waybar_config/modules/network.jsonc
+sd -A -f m '^\s*"on-click-right": "~/.config/waybar/scripts/network off",\n' '' $waybar_config/modules/network.jsonc
+sd '"on-click": "~/.config/waybar/scripts/volume (output|input) mute"' '"on-click": "pavucontrol"' $waybar_config/modules/pulseaudio.jsonc
+sd '"on-click": "kitty -e ~/.config/waybar/scripts/bluetooth"' '"on-click": "blueman-manager"' $waybar_config/modules/bluetooth.jsonc
+sd 'kitty -e' 'ghostty -e' \
+    $waybar_config/modules/custom/power.jsonc \
+    $waybar_config/modules/custom/update.jsonc
+sd '"kitty": "Terminal"' '"ghostty": "Terminal"' $waybar_config/modules/hyprland/window.jsonc
+sd '"zsh": "Terminal"' '"fish": "Terminal"' $waybar_config/modules/hyprland/window.jsonc
+sd '"thermal-zone": 1,' '"hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon",\n\t\t"input-filename": "temp1_input",' $waybar_config/modules/temperature.jsonc
+sd '{:%d-%m}' '{:%m-%d}' $waybar_config/modules/clock.jsonc
+sd 'fzf networkmanager pacman-contrib' 'fzf iwgtk pacman-contrib' $waybar_config/install
+sd 'pacman -Qi' 'paru -Qi' $waybar_config/install
+sd 'sudo pacman -S' 'paru -S' $waybar_config/install
+sd '# Requires pacman-contrib \(checkupdates\)' '# Requires paru and pacman-contrib (checkupdates)' $waybar_config/scripts/update
+sd 'for helper in aura pakku paru pikaur trizen yay' 'for helper in paru' $waybar_config/scripts/update
+sd -A -f m 'update_packages\(\) \{\n\tdebug' 'update_packages() {\n\tdetect_helper\n\tdebug' $waybar_config/scripts/update
+sd 'sudo pacman -Syu' 'paru -Syu' $waybar_config/scripts/update
+sd '<b>Pacman</b>' '<b>Repo</b>' $waybar_config/scripts/update
+sd '\| `networkmanager`\s+\| `nmcli`\s+\| Network connection manager and user applications<tr></tr>\s+\|' '| `iwgtk`                | `iwgtk`         | Lightweight wireless networking GUI for iwd<tr></tr>                            |' $waybar_config/README.md
+rm -f $waybar_config/scripts/network
+rm -f $waybar_config/scripts/backlight
+
 set -l rime_dir ~/.local/share/fcitx5/rime
 mkdir -p ~/.config/uwsm
 mkdir -p ~/.config/fcitx5
 mkdir -p $rime_dir
 mkdir -p ~/.vscode
+
+set -l fcitx_config ~/.config/fcitx5/config
+touch $fcitx_config
+sd '^DisabledAddons=$' '' $fcitx_config
+if not rg -q '^\[Behavior/DisabledAddons\]$' $fcitx_config
+    printf '%s\n' '' '[Behavior/DisabledAddons]' '0=clipboard' >>$fcitx_config
+end
 
 set -l vscode_argv ~/.vscode/argv.json
 if not test -f $vscode_argv
@@ -376,6 +496,13 @@ end
 mkdir -p ~/.config/hypr
 mkdir -p ~/.local/bin
 
+set -l hyprtoolkit_body \
+    'rounding_large = 0' \
+    'rounding_small = 0'
+printf '%s\n' $hyprtoolkit_body >~/.config/hypr/hyprtoolkit.conf
+
+printf '%s\n' 'roundness = 0' >~/.config/hypr/application-style.conf
+
 set -l hypr_record_region_body \
     '#!/usr/bin/env fish' \
     '' \
@@ -624,6 +751,10 @@ set -l hypr_binds_body \
     '' \
     '    configureScrolling(mainMod)' \
     '' \
+    '    hl.on("hyprland.start", function()' \
+    '        hl.exec_cmd(menu .. " --daemon")' \
+    '    end)' \
+    '' \
     '    hl.on("window.open", function(window)' \
     '        if not protonWindowPending or window.initial_class ~= "firefox" then return end' \
     '        protonWindowPending = false' \
@@ -665,7 +796,8 @@ set -l hypr_binds_body \
     '    hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("hyprshutdown"))' \
     '    hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))' \
     '    hl.bind(mainMod .. " + F", hl.dsp.exec_cmd("firefox"))' \
-    '    hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))' \
+    '    hl.bind(mainMod .. " + B", hl.dsp.window.float({ action = "toggle" }))' \
+    '    hl.bind(mainMod .. " + V", hl.dsp.exec_cmd([[history=$(cliphist list); [ -n "$history" ] || exit 0; selection=$(printf "%s\n" "$history" | hyprlauncher --dmenu --quiet); printf "%s" "$selection" | rg -q "^[0-9]+\t" || exit 0; printf "%s\n" "$selection" | cliphist decode | wl-copy]]))' \
     '    hl.bind("ALT + space", hl.dsp.exec_cmd(menu))' \
     '    hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))' \
     '' \
@@ -694,26 +826,17 @@ set -l hypr_binds_body \
     '' \
     '    hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })' \
     '    hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })' \
-    '    hl.bind("mouse:274", hl.dsp.send_shortcut({ mods = "", key = "mouse:275" }), {' \
-    '        device = { list = { "elan0676:00-04f3:3195-touchpad" } },' \
-    '    })' \
     '' \
     '    hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })' \
     '    hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })' \
     '    hl.bind("XF86AudioMute",        hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true })' \
     '    hl.bind("XF86AudioMicMute",     hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true })' \
-    '    hl.bind("XF86MonBrightnessUp",  hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"),                  { locked = true, repeating = true })' \
-    '    hl.bind("XF86MonBrightnessDown",hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"),                  { locked = true, repeating = true })' \
+    '    hl.bind("XF86MonBrightnessUp",  hl.dsp.exec_cmd("brightnessctl -q -e4 -n2 set 5%+ && pkill -RTMIN+2 waybar"), { locked = true, repeating = true })' \
+    '    hl.bind("XF86MonBrightnessDown",hl.dsp.exec_cmd("brightnessctl -q -e4 -n2 set 5%- && pkill -RTMIN+2 waybar"), { locked = true, repeating = true })' \
     '' \
-    '    hl.bind("XF86LinkPhone", hl.dsp.exec_cmd("systemctl suspend"))' \
     '    hl.bind("XF86Favorites", function()' \
     '        protonWindowPending = true' \
     '        hl.exec_cmd("firefox --new-window https://mail.proton.me")' \
-    '    end)' \
-    '    hl.bind("XF86Display", function()' \
-    '        local internal = hl.get_monitor("eDP-1")' \
-    '        if internal and #hl.get_monitors() == 1 then return end' \
-    '        hl.monitor({ output = "eDP-1", disabled = internal ~= nil })' \
     '    end)' \
     '' \
     '    hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })' \
@@ -765,9 +888,9 @@ end
 set -l hypridle_config ~/.config/hypr/hypridle.conf
 set -l hypridle_config_body \
     'general {' \
-    '    lock_cmd = pidof hyprlock || hyprlock' \
+    '    lock_cmd = flock -n /run/user/1000/hyprlock.lock hyprlock' \
     '    before_sleep_cmd = loginctl lock-session' \
-    '    after_sleep_cmd = hyprctl dispatch dpms on' \
+    '    after_sleep_cmd = hyprctl dispatch \'hl.dsp.dpms({ action = "enable" })\'' \
     '}' \
     '' \
     'listener {' \
@@ -783,10 +906,9 @@ set -l hypridle_config_body \
     '' \
     'listener {' \
     '    timeout = 660' \
-    '    on-timeout = hyprctl dispatch dpms off' \
-    '    on-resume = hyprctl dispatch dpms on' \
-    '}' \
-    ''
+    '    on-timeout = hyprctl dispatch \'hl.dsp.dpms({ action = "disable" })\'' \
+    '    on-resume = hyprctl dispatch \'hl.dsp.dpms({ action = "enable" })\'' \
+    '}'
 printf '%s\n' $hypridle_config_body >$hypridle_config
 
 set -l hyprlock_config ~/.config/hypr/hyprlock.conf
@@ -807,11 +929,7 @@ set -l hyprlock_config_body \
     '}' \
     '' \
     'animations {' \
-    '    enabled = true' \
-    '    bezier = linear, 1, 1, 0, 0' \
-    '    animation = fadeIn, 1, 5, linear' \
-    '    animation = fadeOut, 1, 5, linear' \
-    '    animation = inputFieldDots, 1, 2, linear' \
+    '    enabled = false' \
     '}' \
     '' \
     'background {' \
@@ -833,7 +951,7 @@ set -l hyprlock_config_body \
     '    fade_on_empty = false' \
     '    rounding = 0' \
     '    font_family = $font' \
-    '    placeholder_text = $PAMPROMPT<br/>$FPRINTPROMPT' \
+    '    placeholder_text = $FPRINTPROMPT' \
     '    fail_text = $FAIL' \
     '    hide_input = true' \
     '    position = 0, 35' \
