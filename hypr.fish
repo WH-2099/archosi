@@ -707,6 +707,7 @@ set -l hypr_binds_body \
     '        general = {' \
     '            layout = "scrolling",' \
     '        },' \
+    '        scrolling = { column_width = 1.0 },' \
     '    })' \
     '' \
     '    hl.bind(mainMod .. " + bracketleft",  hl.dsp.layout("colresize -conf"))' \
